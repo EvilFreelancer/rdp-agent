@@ -12,9 +12,7 @@ source at `./`.
 
 ```
 rdp-agent/
-├─ .claude-plugin/
-│  ├─ plugin.json        # Claude Code plugin manifest
-│  └─ marketplace.json   # single-plugin marketplace (plugin lives at "./")
+├─ .claude-plugin/plugin.json
 ├─ .cursor-plugin/plugin.json
 ├─ .codex-plugin/plugin.json
 ├─ SKILL.md              # CANONICAL skill: YAML frontmatter + instructions

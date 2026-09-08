@@ -1,0 +1,36 @@
+{
+  "name": "rdp-agent",
+  "version": "0.1.0",
+  "description": "Drive a remote Windows machine over RDP from an AI agent: the RDP client runs on an isolated Xvfb display, the operator watches the same screen in a VNC window and can take over by hand, the session survives between agent turns, and lock screens are recovered by an NLA reconnect instead of typing the password.",
+  "author": {
+    "name": "Pavel Rykov",
+    "email": "paul@drteam.rocks",
+    "url": "https://t.me/evilfreelancer"
+  },
+  "homepage": "https://github.com/EvilFreelancer/rdp-agent",
+  "repository": "https://github.com/EvilFreelancer/rdp-agent",
+  "license": "MIT",
+  "keywords": [
+    "rdp",
+    "freerdp",
+    "xfreerdp",
+    "remote-desktop",
+    "windows",
+    "computer-use",
+    "gui-automation",
+    "xvfb",
+    "x11vnc",
+    "vnc",
+    "xtest",
+    "automation",
+    "agent-skill"
+  ],
+  "skills": "./",
+  "interface": {
+    "displayName": "rdp-agent",
+    "shortDescription": "Drive a remote Windows machine over RDP: isolated virtual display, a viewer window for the operator, a long-lived session and lock-screen recovery.",
+    "developerName": "Pavel Rykov",
+    "category": "Developer Tools",
+    "websiteURL": "https://github.com/EvilFreelancer/rdp-agent"
+  }
+}

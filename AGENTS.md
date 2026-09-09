@@ -85,6 +85,23 @@ After `stop`, verify nothing is left behind by walking `/proc` rather than by
 `version` appears in `SKILL.md` and in all three plugin manifests, bump all four in
 the same commit. Tag releases as `vX.Y.Z`.
 
+## Catalog sync
+
+The skill is listed in the [rpa-skills](https://github.com/EvilFreelancer/rpa-skills)
+catalog, which keeps its own copy of this skill's `version` and `description`. The
+catalog follows and never leads, so release here first, then mirror the change there
+in the same session. Whenever `version` or `description` changes:
+
+1. `.claude-plugin/marketplace.json` in the catalog, set `version` in the
+   `rdp-agent` entry and refresh `description` if it changed;
+2. `.agents/plugins/marketplace.json` in the catalog has no per-plugin `version`,
+   its entry points at `ref: main` and follows by itself. Refresh `description` if
+   it changed, and the `ref` only when the entry pins a tag or a sha;
+3. top-level `metadata.version` in both catalog manifests, patch bump on a mirrored
+   release and identical in the two files;
+4. `README.md` in the catalog, the Skills-table row, only when the purpose changed.
+   `install.sh` there changes only when the repository is renamed.
+
 ## Style
 
 Documentation in this repository is written in English. Russian text elsewhere in

@@ -32,7 +32,24 @@ xfreerdp -> Xvfb :77 (1920x1080) -> x11vnc 127.0.0.1:5977 -> viewer window
 
 ## Install
 
-Clone the repository and symlink it into every agent you use.
+The skill is distributed through the
+[rpa-skills](https://github.com/EvilFreelancer/rpa-skills) catalog, a plugin
+marketplace for Claude Code and Codex, and it also installs as a plain skill folder
+for Cursor, Coddy and anything else that reads `SKILL.md`.
+
+**As a plugin.** Add the catalog once, then install this skill from it:
+
+```text
+/plugin marketplace add EvilFreelancer/rpa-skills
+/plugin install rdp-agent@rpa-skills
+```
+
+```bash
+codex plugin marketplace add EvilFreelancer/rpa-skills
+```
+
+**As a skill folder.** Clone the repository and symlink it into every agent you use,
+the directory name has to match the `name` field in `SKILL.md`:
 
 ```bash
 git clone https://github.com/EvilFreelancer/rdp-agent.git ~/Repository/skills/rdp-agent
@@ -44,8 +61,8 @@ for d in ~/.claude/skills ~/.cursor/skills ~/.codex/skills ~/.coddy/skills; do
 done
 ```
 
-Claude Code and Codex can also take it as a plugin, the manifests live in
-`.claude-plugin/`, `.codex-plugin/` and `.cursor-plugin/`.
+The per-agent plugin manifests live in `.claude-plugin/`, `.codex-plugin/` and
+`.cursor-plugin/`.
 
 Dependencies on the operator's Linux box:
 
@@ -123,6 +140,25 @@ The virtual display is started without `-ac`, the VNC server listens on localhos
 only, and the generated viewer profile stores no credentials. Screenshots of the
 remote desktop accumulate under `~/.local/state/rdp-agent/<profile>/shots/`, treat
 that directory as sensitive and clean it out when the work is done.
+
+## How to invoke
+
+- **Slash command**, type `/rdp-agent` in agent chat;
+- **`@` context**, attach the skill folder or `SKILL.md` to the message;
+- **Automatic**, the agent loads the skill on its own when the request matches the
+  `description` in `SKILL.md`, for example "look at what is open on the remote
+  desktop".
+
+## Source and attribution
+
+Part of [rpa-skills](https://github.com/EvilFreelancer/rpa-skills),
+[Pavel Rykov](https://t.me/evilfreelancer)'s agent-skills collection (see the
+[notes on vibe coding](https://t.me/evilfreelancer/1485) and
+[cursor-vibe-prompts](https://github.com/EvilFreelancer/cursor-vibe-prompts)).
+
+`scripts/xctl.py` and `scripts/xpaste.py` are reused from the
+[screenshotting-gui](https://github.com/EvilFreelancer/screenshotting-gui) skill,
+which is under the same license.
 
 ## License
 

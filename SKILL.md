@@ -74,7 +74,7 @@ python3 <skill>/scripts/rdpctl.py <command>
 
 | Command | What it does |
 |---------|--------------|
-| `start [--no-viewer] [--no-keepalive] [--force]` | Bring up Xvfb, connect, start VNC, the viewer window and the jiggler. Idempotent. `--no-keepalive` for a look-only run, `--force` to retry after an authentication failure. |
+| `start [--no-viewer] [--no-keepalive] [--force]` | Bring up Xvfb, connect, start VNC, the viewer window and the jiggler. Idempotent, on a live session it only applies the keepalive choice. `--no-keepalive` for a look-only run, `--force` to retry after an authentication failure. |
 | `status` | Session liveness, display, VNC port, whether a viewer is attached, warnings from the client log. |
 | `shot [OUT.png] [--crop X Y W H] [--zoom N]` | Screenshot, prints the path. Without `--zoom` a cropped region stays at native size and small text is barely readable. |
 | `state` | `desktop`, `locked` or `unknown`, plus a screenshot. |
@@ -87,7 +87,7 @@ python3 <skill>/scripts/rdpctl.py <command>
 | `paste "text"` | Clipboard transfer, works only where redirection is not blocked by policy. |
 | `unlock [--type-password --operator-confirmed]` | Clear the lock screen. Typing the password requires the operator's confirmation. |
 | `reconnect` | Restart only the RDP client, keeping Xvfb, VNC and the viewer. |
-| `keepalive on\|off` | Mouse jiggler against the idle lock. |
+| `keepalive on\|off` | Mouse jiggler against the idle lock. The choice persists, a jiggler that died comes back with the next command while it is on. |
 | `viewer [--force]` | Reopen the viewer window if the operator closed it. |
 | `winlist` | Windows of the virtual X display, not Windows windows. One line with the xfreerdp window, useful only to confirm the client is alive. |
 | `logs [-n N]` | Tails of the xfreerdp, x11vnc and Xvfb logs. |
@@ -127,6 +127,13 @@ starts together with the session and nudges the pointer by one pixel every 90
 seconds. It is disabled by `start --no-keepalive` or `keepalive off`, and the
 interval lives in the profile as `RDP_JIGGLE_INTERVAL`. Note that this defeats the
 idle-lock policy of the target machine, so it is the operator's call.
+
+The choice is stored in `session.json`. While keepalive is on, every command that
+needs the session brings back a jiggler whose process is gone and says so on
+stderr, and `status` shows `DOWN` in between. A plain `start` on a live session
+switches keepalive back on, `start --no-keepalive` on a live session switches it
+off. A session started with `--no-keepalive` has no jiggler until someone asks for
+it, so after a pause look at the `state` screenshot before typing anything.
 
 ## What is running inside Windows
 

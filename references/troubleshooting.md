@@ -57,6 +57,24 @@ cases, this was measured (standard deviation 14.5 on the desktop against 13.6 on
 the lock screen). When actions produce no visible change, call `unlock --force`
 regardless of the verdict.
 
+## The session locked although keepalive should have prevented it
+
+Look at the `jiggler` line of `status` first. `off` means the session was started with
+`--no-keepalive` or someone ran `keepalive off`, and a plain `start` or `keepalive on`
+switches it back on. `DOWN` means keepalive is on but the process is gone, the next
+command restarts it. Before this was tracked, one look-only `start` left a session
+without keepalive for good, it locked after the idle timeout, and the next typed
+text went into the logon form as a failed password.
+
+To see whether the nudges reach Windows, watch the idle counter of the session in
+PowerShell. With keepalive on it falls back to a few seconds once per
+`RDP_JIGGLE_INTERVAL`, if it keeps growing past that, read `jiggle.log` in the state
+directory.
+
+```powershell
+Add-Type 'using System;using System.Runtime.InteropServices;public class IdleProbe{[StructLayout(LayoutKind.Sequential)]public struct LII{public uint cbSize;public uint dwTime;}[DllImport("user32.dll")]static extern bool GetLastInputInfo(ref LII p);public static uint Ms(){LII l=new LII();l.cbSize=8;GetLastInputInfo(ref l);return (uint)Environment.TickCount-l.dwTime;}}'; 1..48|%{'{0:HH:mm:ss} idle {1}s' -f (Get-Date),[math]::Round([IdleProbe]::Ms()/1000);sleep 5}
+```
+
 ## Clipboard transfer does nothing in either direction
 
 Group policy on hardened images disables RDP clipboard redirection. Test it by

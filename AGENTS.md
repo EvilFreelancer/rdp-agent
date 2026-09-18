@@ -77,6 +77,12 @@ For the lock path, lock the remote session with `key super+l`, confirm `state`
 reports `locked`, run `unlock`, and confirm the desktop comes back with the same
 windows open.
 
+For keepalive, kill the jiggler PID from `session.json`, confirm `status` shows
+`DOWN`, run any command and confirm `status` shows `on` again. `start --no-keepalive`
+on a live session must switch the jiggler off, a plain `start` must switch it back
+on. The idle probe in `references/troubleshooting.md` shows whether the nudges reach
+Windows.
+
 After `stop`, verify nothing is left behind by walking `/proc` rather than by
 `pgrep -f`, whose pattern matches the checking shell itself.
 

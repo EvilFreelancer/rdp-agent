@@ -407,6 +407,10 @@ def cmd_start(conf, args):
     sd = state_dir(name)
     if session_ok(conf):
         print("Session is already up, reusing it.")
+        if args.no_keepalive:
+            stop_jiggle(conf)
+        else:
+            start_jiggle(conf)
         return cmd_status(conf, args)
 
     when, why = auth_blocked(conf)
@@ -469,7 +473,10 @@ def cmd_start(conf, args):
     st.pop("auth_failed_at", None)
     st.pop("auth_error", None)
     write_state(name, st)
-    if not args.no_keepalive:
+    if args.no_keepalive:
+        st["keepalive"] = False
+        write_state(name, st)
+    else:
         st = start_jiggle(conf, st)
     if not args.no_viewer:
         open_viewer(conf, st)
@@ -509,20 +516,28 @@ def open_viewer(conf, st=None, force=False):
 
 
 # ---------------------------------------------------------------------- status
-def start_jiggle(conf, st=None):
-    """Keep the remote session active while the agent session is alive."""
+def start_jiggle(conf, st=None, quiet=False):
+    """Keep the remote session active while the agent session is alive.
+
+    The choice is stored as `keepalive` in session.json, so ensure_jiggle can
+    bring the jiggler back when its process is gone.
+    """
     name = conf["_name"]
     st = st if st is not None else read_state(name)
-    if alive(st.get("jiggle_pid"), "jiggle.py"):
-        print("Mouse jiggler is already running.")
+    st["keepalive"] = True
+    if alive(st.get("jiggle_pid"), KEY_MARKERS["jiggle_pid"]):
+        write_state(name, st)
+        if not quiet:
+            print("Mouse jiggler is already running.")
         return st
     p = spawn([sys.executable, str(JIGGLE), conf["RDP_DISPLAY"],
                conf["RDP_JIGGLE_INTERVAL"]], state_dir(name) / "jiggle.log")
     st["jiggle_pid"] = p.pid
     write_state(name, st)
-    print(f"Mouse jiggler started, every {conf['RDP_JIGGLE_INTERVAL']}s "
-          f"(pid {p.pid}). This is synthetic input into the remote session, for a "
-          f"look-only run use start --no-keepalive.")
+    if not quiet:
+        print(f"Mouse jiggler started, every {conf['RDP_JIGGLE_INTERVAL']}s "
+              f"(pid {p.pid}). This is synthetic input into the remote session, for a "
+              f"look-only run use start --no-keepalive.")
     return st
 
 
@@ -534,7 +549,23 @@ def stop_jiggle(conf):
     else:
         print("Mouse jiggler is not running.")
     st.pop("jiggle_pid", None)
+    st["keepalive"] = False
     write_state(conf["_name"], st)
+
+
+def ensure_jiggle(conf):
+    """Restart the jiggler when keepalive is on but its process is gone.
+
+    A session started once with --no-keepalive, or a jiggler that exited, used to
+    stay without keepalive until someone noticed: `start` on a live session only
+    printed the status. The remote side then fell into the idle lock and the next
+    typed text landed in the logon form as a password attempt.
+    """
+    st = read_state(conf["_name"])
+    if st.get("keepalive", True) and not alive(st.get("jiggle_pid"), KEY_MARKERS["jiggle_pid"]):
+        st = start_jiggle(conf, st, quiet=True)
+        print(f"rdpctl: keepalive is on but the mouse jiggler was not running, "
+              f"restarted it (pid {st['jiggle_pid']})", file=sys.stderr)
 
 
 def cmd_status(conf, args):
@@ -557,7 +588,13 @@ def cmd_status(conf, args):
     print(f"x11vnc     pid={st.get('vnc_pid')} {'ok' if alive(st.get('vnc_pid'),'x11vnc') else 'down'}"
           f"  port 127.0.0.1:{conf['RDP_VNC_PORT']}")
     print(f"viewer     {'attached' if viewer_attached(conf['RDP_VNC_PORT']) else 'closed (rdpctl.py viewer)'}")
-    print(f"jiggler    {'on, every ' + conf['RDP_JIGGLE_INTERVAL'] + 's' if alive(st.get('jiggle_pid'), 'jiggle.py') else 'off (rdpctl.py keepalive on)'}")
+    if alive(st.get("jiggle_pid"), KEY_MARKERS["jiggle_pid"]):
+        jiggler = f"on, every {conf['RDP_JIGGLE_INTERVAL']}s"
+    elif ok and st.get("keepalive", True):
+        jiggler = "DOWN although keepalive is on, the next command restarts it"
+    else:
+        jiggler = "off (rdpctl.py keepalive on)"
+    print(f"jiggler    {jiggler}")
     if ok:
         print(f"rdp window {win or 'not found'}")
     log = state_dir(name) / "xfreerdp.log"
@@ -572,9 +609,11 @@ def cmd_status(conf, args):
     return 0 if ok else 1
 
 
-def require_session(conf):
+def require_session(conf, keepalive=True):
     if not session_ok(conf):
         sys.exit("rdpctl: no session, run `rdpctl.py start` first")
+    if keepalive:
+        ensure_jiggle(conf)
 
 
 def type_ru(conf, text):
@@ -739,7 +778,7 @@ def main():
         require_session(conf)
         xctl(conf, cmd, *r)
     elif cmd == "keepalive":
-        require_session(conf)
+        require_session(conf, keepalive=False)
         if r and r[0] in ("off", "stop"):
             stop_jiggle(conf)
         else:

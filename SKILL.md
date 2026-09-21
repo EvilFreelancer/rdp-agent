@@ -1,6 +1,5 @@
 ---
 name: rdp-agent
-version: 0.1.0
 description: >
   Drive a remote Windows machine over RDP in a live session that the operator can
   watch in a normal window and take over by hand at any moment. Use when the user
@@ -10,6 +9,7 @@ description: >
   The session is created once, survives between agent turns, and is closed only on
   the operator's explicit order.
 metadata:
+  version: 0.1.0
   author: Pavel Rykov <paul@drteam.rocks>
   homepage: https://github.com/EvilFreelancer/rdp-agent
   triggers: >

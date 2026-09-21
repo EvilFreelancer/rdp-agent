@@ -9,7 +9,7 @@ description: >
   The session is created once, survives between agent turns, and is closed only on
   the operator's explicit order.
 metadata:
-  version: 0.1.0
+  version: 0.1.1
   author: Pavel Rykov <paul@drteam.rocks>
   homepage: https://github.com/EvilFreelancer/rdp-agent
   triggers: >

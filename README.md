@@ -48,6 +48,14 @@ for Cursor, Coddy and anything else that reads `SKILL.md`.
 codex plugin marketplace add EvilFreelancer/rpa-skills
 ```
 
+**In Coddy**: the rpa-skills catalog is built into [Coddy](https://coddy.dev) as a system source,
+so there is nothing to connect. One sync installs this skill together with the rest of the collection
+into `~/.coddy/skills/rdp-agent/` and keeps it up to date (or press **Sync all** in Settings → Skills):
+
+```bash
+coddy skills sync
+```
+
 **As a skill folder.** Clone the repository and symlink it into every agent you use,
 the directory name has to match the `name` field in `SKILL.md`:
 

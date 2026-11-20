@@ -10,7 +10,8 @@ a GUI that only exists on someone else's desktop. Ready-made "computer use" serv
 either need an agent installed on the target (impossible on a locked-down corporate
 image) or hijack the operator's own screen. This skill takes the third path, it
 runs a real RDP client on an isolated virtual display and drives it with synthetic
-X input.
+X input. On macOS there is no X server: the client runs headless over the same
+protocol, see the macOS section below.
 
 ## How it works
 
@@ -77,6 +78,21 @@ Dependencies on the operator's Linux box:
 ```bash
 sudo apt install freerdp2-x11 xvfb x11-utils imagemagick python3-xlib x11vnc remmina
 ```
+
+Dependencies on the operator's Mac:
+
+```bash
+python3 scripts/macsetup.py check     # reports what is missing, changes nothing
+python3 scripts/macsetup.py fix       # installs the Python packages it named
+```
+
+`aardwolf` is the RDP client and is installed by `fix`. No system permissions are
+needed: the session does not capture the local screen and does not post local input,
+everything travels over the RDP protocol.
+
+On macOS there is no Xvfb: `rdpctl.py` picks the platform on startup and hands over to
+`rdpview.py`, which connects with `aardwolf` and draws the frames in a Tk window. Read
+`references/macos.md` for the rules that keep the remote session untouched.
 
 ## Quick start
 
@@ -171,3 +187,160 @@ which is under the same license.
 ## License
 
 MIT, see [LICENSE](LICENSE). Author: Pavel Rykov, [@evilfreelancer](https://t.me/evilfreelancer).
+
+## macOS
+
+The skill works on macOS through the RDP protocol instead of a GUI client. There is
+no Xvfb and no per-display VNC server on macOS, so the client runs headless inside the
+skill and the operator watches it in a preview window. Input travels over the RDP
+protocol, which means the macOS cursor and keyboard focus are never touched: the
+operator keeps working in any other window while the agent drives the remote machine.
+
+### Requirements
+
+- macOS 12 or newer
+- Python 3.11 or newer (3.13 tested)
+- Windows App or Microsoft Remote Desktop for the first logon
+
+No macOS permissions are required: the session is driven over the RDP protocol, the
+local screen and the local input are not touched.
+
+### Install
+
+Run the pre-flight check first, it changes nothing:
+
+```bash
+python3 scripts/macsetup.py check
+```
+
+It reports the platform, the architecture, the Python packages, the permissions and
+the RDP client, and exits with `0` when everything is in place.
+
+Install the missing Python packages with:
+
+```bash
+python3 scripts/macsetup.py fix
+```
+
+The `aardwolf` client is installed by the same command, and the way it installs
+depends on the CPU:
+
+| CPU | What happens |
+|---|---|
+| Apple Silicon (`arm64`) | a prebuilt wheel is downloaded, about a minute |
+| Intel (`x86_64`) with Python 3.13 | a prebuilt `universal2` wheel exists, no compiler is needed |
+| Intel (`x86_64`) with an older Python | no wheel matches, the package is built from source and needs Rust |
+
+Check what `macsetup.py check` says before installing Rust: if `aardwolf` installs
+from a wheel, `cargo` is never used.
+
+On Intel, install Rust once before running `fix`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+Rust installs into `~/.cargo`, needs no `sudo` and touches no system files. The build
+takes a few minutes.
+
+### First run
+
+1. Open the RDP client you normally use for this machine (for example Windows App,
+   Microsoft Remote Desktop or any other client that can reach it), connect yourself,
+   enter the password if the lock screen appears, and wait for the desktop. This warms the session up: after it
+   the protocol client connects to an already authorised session and no password is
+   typed into the logon form.
+2. Start the skill. It connects, sends `Ctrl+Alt+Del` if the screen is still locked,
+   and opens the preview window.
+
+If the agent asks you to prove the warm-up with a network check, you can decline: on
+macOS a live RDP session often shows no established connection on port 3389, so the
+check is unreliable. Your word is enough, and a failed connection is reported by the
+skill itself within 20 seconds.
+
+Without the warm-up the session stays at the logon screen and the protocol client
+cannot get past it.
+
+### Working on the side
+
+The preview window is a normal window: keep it visible, move it to another Space or
+minimise it. The session survives all of that.
+
+- **Click inside the window** takes over: from that moment input is yours and the
+  agent stops sending.
+- **Fn+F5** hands control back to the agent. On a MacBook the top row sends media
+  keys by default, so plain F5 goes to dictation; holding Fn sends the real function key.
+- **Escape** closes the preview, which ends the session.
+
+While the take-over is active the agent accepts instructions from the chat and
+executes them in the same session, without reconnecting.
+
+### Limitations
+
+- The remote resolution is never changed. On a 1024x768 session the picture is
+  stretched to the window, so a full screen view costs more than a windowed one.
+- macOS has a single cursor and a single keyboard focus for the whole session, so a
+  second independent cursor is impossible. The protocol route is what makes parallel
+  work possible instead.
+- A second connection takes the session over. Your own RDP client and the skill
+  cannot be connected at the same time.
+- Corporate environments may require a gateway or a client certificate the built-in
+  client does not support. Check the logon before relying on it.
+
+## When the skill is used
+
+The skill turns on when the request names the remote work explicitly, in either
+language:
+
+| Language | Say |
+|---|---|
+| English | "set up the RDP connection", "set up the remote desktop skill", "connect to the remote machine", "look at the remote desktop", "unlock the RDP session" |
+| Russian | «настрой подключение к RDP», «настрой RDP», «настрой удалёнку», «RDP скилл», «RDP навык», «подключись к удалённой машине» |
+
+A bare "настрой" or "setup" is deliberately not a trigger: those words belong to any
+skill, and the agent would guess wrong. Name the remote machine or RDP itself.
+
+### Credentials
+
+The login and password you type in the terminal are the same corporate credentials you
+use for the company VPN client, for example NGate, Cisco AnyConnect or OpenVPN. There is
+no separate account for the skill. The password is used to authorise the connection only
+and is never written to disk.
+
+You can leave your own RDP client open while the skill connects: the session ends
+automatically and moves to the new window. If you prefer, close it yourself after the
+warm-up.
+
+### A note about the system Python
+
+macOS ships with Python 3.9 and it is not usable here: the client needs 3.11 or newer.
+On macOS 14 the system interpreter can even abort with SIGABRT before a script starts,
+with the message "macOS 14 (1408) or later required, have instead 14 (1406)". That is
+an Apple build problem, not a problem with the skill.
+
+Install a newer one and call it explicitly:
+
+```bash
+the python.org installer for macOS (it includes Tcl/Tk)
+/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 scripts/macsetup.py check
+```
+
+### Do not use Homebrew for Python here
+
+On some macOS 14 machines Homebrew has no prebuilt bottle and starts compiling the
+interpreter from source. That pulls a downgrade of `openssl@3` and touches packages
+other projects depend on. Install Python from python.org instead: the macOS installer
+is a signed universal2 build and already contains Tcl/Tk, which the preview window
+needs.
+
+```bash
+# after installing from python.org
+/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 scripts/macsetup.py check
+```
+
+If the operator prefers Homebrew, check first that it will use a bottle:
+
+```bash
+brew info python@3.12 | head -5   # "bottle" must be present for this OS
+```

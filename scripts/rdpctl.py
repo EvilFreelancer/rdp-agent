@@ -729,6 +729,14 @@ def take_shot(conf, out, crop=None, zoom=None):
 
 # ------------------------------------------------------------------------ main
 def main():
+    # macOS has no X server: hand over to the native implementation, the Linux
+    # path below stays exactly as it is.
+    if sys.platform == "darwin":
+        # macOS has no X display: the session is driven over the RDP protocol and
+        # shown in a Tk window, so every argument goes to rdpview.py
+        script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rdpview.py")
+        os.execv(sys.executable, [sys.executable, script] + sys.argv[1:])
+
     ap = argparse.ArgumentParser(add_help=False)
     ap.add_argument("--profile", default=os.environ.get("RDP_PROFILE", "default"))
     ap.add_argument("--timeout", default=45)
